@@ -1,2 +1,2 @@
-# EN-OS-System-Manager
-System Manager for EN-OS
+# EN-OS-Live-Welcome
+Simple GUI program for EN-OS Live

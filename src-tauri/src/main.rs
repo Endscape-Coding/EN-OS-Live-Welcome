@@ -55,21 +55,6 @@ fn startlink(link: String) {
     }
 }
 
-//Работа с темами
-#[tauri::command]
-fn theme_path(path: String) -> Result<String, String> {
-    match fs::read_to_string(path) {
-        Ok(content) => {
-            println!("Подгружаем css стили.. Полет нормальный");
-            Ok(String::from(data::DATA))
-        }
-        Err(e) => {
-            eprintln!("Ошибка чтения CSS: {}", e);
-            Ok(String::from(data::DATA))
-        }
-    }
-}
-
 //Работа с языками
 fn system_lang() -> String {
     let syslang = env::var("LANG").expect("Ошибка получения языка").to_string().chars().take(2).collect();

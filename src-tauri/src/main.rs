@@ -174,7 +174,7 @@ fn main() {
     }
 
     tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![startprog, theme_path, config_read, config_write, get_home_dir, set_lang, curr_lang, startlink])
+    .invoke_handler(tauri::generate_handler![startprog, config_read, config_write, get_home_dir, set_lang, curr_lang, startlink])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

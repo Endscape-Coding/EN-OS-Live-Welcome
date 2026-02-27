@@ -4,7 +4,7 @@ use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 use serde::{Serialize, Deserialize};
-use std::io;
+use sysinfo::{Components, System};
 
 mod data;
 
@@ -30,10 +30,12 @@ impl Default for Config {
 #[tauri::command]
 fn startprog(mode: &str) -> String {
     let mut cmd = match mode {
-        "driver" => Command::new("enos-driver-manager"),
-        "pamac" => Command::new("pamac-manager"),
-        "rassist" => Command::new("enos-assistant-creator"),
-        "zapret" => Command::new("enos-zapret-manager"),
+        "calamares-offline" => Command::new("calamares"),
+        "calamares-online" => {
+            let mut c = Command::new("calamares");
+            c.args(&["-c", "/etc/calamares/online/"]);
+            c
+        }
         _ => return "Что то тут не так..".to_string()
     };
 
@@ -42,72 +44,6 @@ fn startprog(mode: &str) -> String {
         Err(e) => format!("Ошибка {e}").to_string()
     }
     // ЭТО НЕ ИИШКА
-}
-
-#[tauri::command]
-fn tweak(name: &str) -> Result<String, String> {
-    match name {
-        "kde_session" => Ok("sss".to_string()),
-        "keys_on" => {
-            run_cmd("pkexec", &["pacman-key-manager", "--install"])
-            .map(|_| "Ключи установлены".to_string())
-            .map_err(|e| e.to_string())
-        }
-        "keys_off" => {
-            run_cmd("pkexec", &["pacman-key-manager", "--uninstall"])
-            .map(|_| "Ключи удалены".to_string())
-            .map_err(|e| e.to_string())
-        }
-        "zram_on" => {
-            run_cmd("pkexec", &["zram-manager", "--install"])
-            .map(|_| "ZRAM включен".to_string())
-            .map_err(|e| e.to_string())
-        }
-        "zram_off" => {
-            run_cmd("pkexec", &["zram-manager", "--uninstall"])
-            .map(|_| "ZRAM выключен".to_string())
-            .map_err(|e| e.to_string())
-        }
-        "refresh_mirrors" => {
-            run_cmd("pkexec", &["reflector", "--latest", "20", "--protocol", "https", "--sort", "rate", "--save", "/etc/pacman.d/mirrorlist"])
-            .map(|_| "Зеркала обновлены".to_string())
-            .map_err(|e| e.to_string())
-        }
-        "clear_journal" => {
-            run_cmd("pkexec", &["journalctl", "--vacuum-time=2weeks"])
-            .map(|_| "Журнал очищен".to_string())
-            .map_err(|e| e.to_string())
-        }
-        _ => Err("Неизвестная команда".to_string()),
-    }
-}
-
-#[tauri::command]
-fn check_prog(name: &str) -> bool {
-    match name {
-        "zram-manager" => {
-            let path = "/etc/systemd/system/zram.service";
-            let path = Path::new(&path);
-            path.exists()
-        }
-        "pacman-key-manager" => {
-            let path = "/etc/systemd/system/pacman-key-manager.service";
-            let path = Path::new(&path);
-            path.exists()
-        }
-        _ => false
-    }
-}
-
-fn run_cmd(cmd: &str, args: &[&str]) -> io::Result<()> {
-    let cmd_status = Command::new(cmd).args(args).status()?;
-
-    match cmd_status.success() {
-        true => Ok(()),
-        false => Err(std::io::Error::other(
-            format!("Ошибка в выполнении команды {}", cmd),
-        )),
-    }
 }
 
 #[tauri::command]
@@ -127,7 +63,7 @@ fn theme_path(path: String) -> Result<String, String> {
     match fs::read_to_string(path) {
         Ok(content) => {
             println!("Подгружаем css стили.. Полет нормальный");
-            Ok(content)
+            Ok(String::from(data::DATA))
         }
         Err(e) => {
             eprintln!("Ошибка чтения CSS: {}", e);
@@ -135,63 +71,6 @@ fn theme_path(path: String) -> Result<String, String> {
         }
     }
 }
-
-
-#[tauri::command]
-fn set_theme(name: String) -> Result<Config, String> {
-    let mut config = config_read()?;
-    config.theme = name;
-    config_write(config)
-}
-
-
-#[tauri::command]
-fn custom_theme_path() -> Vec<String> {
-    let pathfolder = format!("{}/.config/enos_manager/",var("HOME").unwrap());
-    let pathfile = format!("{}/.config/enos_manager/default.css",var("HOME").unwrap());
-    let pathfolder = Path::new(&pathfolder);
-    let pathfile = Path::new(&pathfile);
-    let _null: Vec<String> = Vec::new();
-
-    match pathfolder.exists() {
-        true => {
-            match pathfile.exists() {
-                true => println!("Default file exist"),
-                false => fs::write(pathfile, data::DATA).expect("Не получилось записать css файл"),
-            }
-            let theme_prefix = "css";
-            let mut themes_list = Vec::new();
-            let entries = match fs::read_dir(pathfolder) {
-                Ok(dir) => dir,
-                Err(_) => return Vec::new(),
-            };
-            for entry in entries.flatten() {
-                let entry = entry;
-                let path = entry.path();
-
-                if path.is_file() {
-                    if let Some(ext) = path.extension() {
-                        if ext == theme_prefix {
-                            if let Some(file_name) = path.file_name() {
-                                themes_list.push(file_name.to_string_lossy().into_owned());
-                            }
-                        }
-                    }
-                }
-            }
-            themes_list
-        }
-        false => {
-            let _ = fs::create_dir_all(pathfolder);
-            fs::write(pathfile, data::DATA);
-
-            Vec::new()
-        }
-    }
-}
-
-
-
 
 //Работа с языками
 fn system_lang() -> String {
@@ -212,7 +91,6 @@ fn curr_lang() -> String {
     let config = config_read();
     config.unwrap().lang
 }
-
 
 
 //Работа с конфигами
@@ -288,8 +166,21 @@ fn mbwayland() -> bool {
     }
 }
 
+fn check_memory(sys: &mut System) -> f64 {
+    sys.refresh_memory();
+    sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0
+}
+
 fn main() {
     println!("Надеюсь, что вы не ИИ-фоб, и понимаете, что вся эта отладка написана вручную, просто, чтобы вы могли понять, на каком месте программа застряла. Удачного просмотра!");
+    let mut sys = System::new();
+    let _components = Components::new_with_refreshed_list();
+    sys.refresh_all();
+
+    let memory_size = check_memory(&mut sys);
+    if memory_size < 1.0 {
+        println!("У вас мало оперативной памяти!")
+    }
     match mbwayland() {
         true => {
             set_var("XDG_RUNTIME_DIR", "/tmp/runtime-root");
@@ -300,7 +191,7 @@ fn main() {
     }
 
     tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![startprog, theme_path, set_theme, custom_theme_path, config_read, config_write, get_home_dir, set_lang, curr_lang, startlink, tweak, check_prog])
+    .invoke_handler(tauri::generate_handler![startprog, theme_path, config_read, config_write, get_home_dir, set_lang, curr_lang, startlink])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

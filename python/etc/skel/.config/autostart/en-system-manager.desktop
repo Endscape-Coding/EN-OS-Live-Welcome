@@ -1,9 +1,0 @@
-[Desktop Entry]
-Version=1.1
-Type=Application
-Name=EN-System-manager
-Exec=/usr/bin/enos-system-manager
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-OnlyShowIn=KDE;

@@ -6,8 +6,6 @@ use std::path::Path;
 use serde::{Serialize, Deserialize};
 use sysinfo::{Components, System};
 
-mod data;
-
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     lang: String,
